@@ -1,4 +1,5 @@
 # THIS WILL HOLD ALL CLASSES
+import numpy as np
 
 class Station():
 
@@ -7,6 +8,7 @@ class Station():
         self.machines = 1
         self.work_in_progress = 0
         self.queue = 0
+        self.queue_hist = []
 
     def add_machine(self):
         self.machines += 1

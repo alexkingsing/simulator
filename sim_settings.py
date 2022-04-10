@@ -5,4 +5,8 @@ import numpy as np
 def daily_demand():
     # Mean demand of 20 orders a day
     demand = np.random.poisson(lam=20)
-    
+    pass
+
+def move_to_next_step(start_station, next_step):
+    pass
+
