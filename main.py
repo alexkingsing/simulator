@@ -7,3 +7,4 @@ value, plot = simulators.bonds(zero=False, yearly=False)
 st.pyplot(plot)
 
 
+st.write(simulators.portfolio())

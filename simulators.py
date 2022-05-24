@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
+from pulp import LpMinimize, LpProblem, LpVariable, LpStatus
 
 def bonds(par = 100, coupon_rate = 0.2, discount_rate = 0.13, zero = True, maturity = 5, yearly = True) -> Any:
     if zero == True:
@@ -113,8 +114,37 @@ def bonds(par = 100, coupon_rate = 0.2, discount_rate = 0.13, zero = True, matur
 
         return PV, fig
 
-def stock():
-    pass
+def portfolio(ticker_list = ["MSFT", "WM", "AAPL"]):
+    data = None
 
-def portfolio(tickers: list):
-    pass
+    # Extracting tickers information
+    for ticker in ticker_list:
+        if data is None:
+            ticker_info = yf.Ticker(ticker)
+            ticker_data = ticker_info.history(period="5y", interval="1mo", rounding=True)
+            ticker_data.dropna(inplace = True) #deleting random empty spots
+            data_index = ticker_data.index # saving index for dataframe creation
+            data = pd.DataFrame(index = data_index, data = {ticker: ticker_data["Close"]})
+        else:
+            ticker_info = yf.Ticker(ticker)
+            ticker_data = ticker_info.history(period="5y", interval="1mo", rounding=True)
+            ticker_data.dropna(inplace = True) #deleting random empty spots
+            data = pd.concat([data, ticker_data["Close"]], axis=1)
+            data.rename(columns={"Close": ticker}, inplace=True)
+
+    returns = data.pct_change()
+    # returns.mean(axis=0) returns per stock
+    # returns.std(axis=0) monthly volatility
+
+
+    # finding weights for the minimum variance portfolio through linear optimization
+    # Creating model
+    model = LpProblem("min_var", sense=LpMinimize)
+    # Creating variables dynamically for easier processing
+    vars = LpVariable.dicts("w", indices = ticker_list, lowBound=0)
+
+    
+
+
+
+    
