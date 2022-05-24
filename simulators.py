@@ -114,6 +114,13 @@ def bonds(par = 100, coupon_rate = 0.2, discount_rate = 0.13, zero = True, matur
 
         return PV, fig
 
+def stock(tick):
+    pass
+
+class portfolio():
+    pass
+
+
 def portfolio(ticker_list = ["MSFT", "WM", "AAPL"]):
     data = None
 
@@ -135,13 +142,6 @@ def portfolio(ticker_list = ["MSFT", "WM", "AAPL"]):
     returns = data.pct_change()
     # returns.mean(axis=0) returns per stock
     # returns.std(axis=0) monthly volatility
-
-
-    # finding weights for the minimum variance portfolio through linear optimization
-    # Creating model
-    model = LpProblem("min_var", sense=LpMinimize)
-    # Creating variables dynamically for easier processing
-    vars = LpVariable.dicts("w", indices = ticker_list, lowBound=0)
 
     
 
