@@ -1,3 +1,4 @@
+import enum
 from typing import Any
 import pandas as pd
 import numpy as np
@@ -114,49 +115,47 @@ def coupon_bond(par = 100, coupon_rate = 0.2, discount_rate = 0.13, maturity = 5
 
     return PV, fig
 
-@st.cache()
-def stock(tick) -> pd.DataFrame:
+def stock(tick:str) -> pd.DataFrame:
     data = yf.Ticker(tick) # Generel ticker info
     ticker_data = data.history(period="5y", interval="1mo", rounding=True) # obtaining 5 year data for any requested ticker
     ticker_data.dropna(inplace = True) #deleting random empty spots
+    ticker_data = pd.DataFrame(ticker_data["Close"])
+    ticker_data.rename(columns = {"Close": tick}, inplace=True)
     return ticker_data
 
 class portfolio():
-    def __init__(self, name = "Default_Portfolio", ticks = {}) -> None:
+    def __init__(self, tickers, name = "Default_Portfolio") -> None:
         self.name = name
-        self.tickers = ticks
-        self.portfolio = None
+        self.tickers = tickers
+        self.origin_portfolio = None
+        self.origin_weights = {}
+        self.weighted_portfolio = None
+        self.new_weights = {}
 
-    def add_ticker(tick, data, weight = 0):
-        # Function to simply add ticker to the internal list
-        self.tickers[tick] = [data, weight]
+    def repr(self) -> pd.DataFrame:
+        # return visual representation of the current portfolio
+        return self.origin_portfolio
 
-    def remove_ticker(tick):
-        self.tickers.popitem(tick)
+    def create_portfolio(self):
+        # Portfolio generation method. Weights will be created automatically for consistency
+        for i, ticker in enumerate(self.tickers):
+            if i == 0:
+                self.origin_portfolio = ticker
+            else:
+                self.origin_portfolio = pd.concat([self.origin_portfolio, ticker], axis=1)
+        
+        equal_weight = 1/len(self.tickers)
+        for ticker in self.origin_portfolio.columns:
+            self.origin_weights[ticker] = equal_weight
 
+    def origin_stocks_returns(self):
+        # Display the average monthly return for each stock for the period
+        return self.origin_portfolio.pct_change().mean(axis=0)
 
-    
+    def origin_volatility(self):
+        # Display the average monthly return for each stock for the period
+        return self.origin_portfolio.pct_change().std(axis=0)
 
-'''
-def portfolio(ticker_list = ["MSFT", "WM", "AAPL"]):
-    data = None
-
-    # Extracting tickers information
-    for ticker in ticker_list:
-        if data is None:
-            ticker_info = yf.Ticker(ticker)
-            ticker_data = ticker_info.history(period="5y", interval="1mo", rounding=True)
-            ticker_data.dropna(inplace = True) #deleting random empty spots
-            data_index = ticker_data.index # saving index for dataframe creation
-            data = pd.DataFrame(index = data_index, data = {ticker: ticker_data["Close"]})
-        else:
-            ticker_info = yf.Ticker(ticker)
-            ticker_data = ticker_info.history(period="5y", interval="1mo", rounding=True)
-            ticker_data.dropna(inplace = True) #deleting random empty spots
-            data = pd.concat([data, ticker_data["Close"]], axis=1)
-            data.rename(columns={"Close": ticker}, inplace=True)
-
-    returns = data.pct_change()
-    # returns.mean(axis=0) returns per stock
-    # returns.std(axis=0) monthly volatility
-'''    
+    def portfolio_return(self):
+        # calculate expected portfolio return for the baseline case of equal weights
+        pass
