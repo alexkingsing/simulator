@@ -3,8 +3,8 @@
 import streamlit as st
 import simulators
 
-value, plot = simulators.bonds(zero=False, yearly=False)
+value, plot = simulators.coupon_bond()
 st.pyplot(plot)
 
 
-st.write(simulators.portfolio())
+# simulators.portfolio()

@@ -3,124 +3,141 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
+import streamlit as st
 from pulp import LpMinimize, LpProblem, LpVariable, LpStatus
 
-def bonds(par = 100, coupon_rate = 0.2, discount_rate = 0.13, zero = True, maturity = 5, yearly = True) -> Any:
-    if zero == True:
-        # Valuation using simple present value
-        discount_mult = 1/((1+discount_rate)**maturity)
-        PV = par * discount_mult
 
-        # Timeline visualization based on matplotlibs timeline example
+def zero_bond(par = 100, discount_rate = 0.13, maturity = 5):
+    discount_mult = 1/((1+discount_rate)**maturity)
+    PV = par * discount_mult
 
-        ## creating timeline spacing
-        lenght = list(range(0,maturity + 1))
-        ## Choosing some nice levels
-        levels = np.tile([1] + [0] * (len(lenght)-2) + [2], # creating zero timeline by highlighting start and end
-                        int(np.ceil(len(lenght)/6)))[:len(lenght)]
+    # Timeline visualization based on matplotlibs timeline example
 
-        ## Create figure and plot a stem plot with the date
-        fig, ax = plt.subplots(figsize=(8.8, 4), constrained_layout=True)
-        ax.set(title=f'''Zero bond valuation timeline\n Par:{par}, Maturity(Y): {maturity}, Discount rate: {discount_rate*100}%''')
+    ## creating timeline spacing
+    lenght = list(range(0,maturity + 1))
+    ## Choosing some nice levels
+    levels = np.tile([1] + [0] * (len(lenght)-2) + [2], # creating zero timeline by highlighting start and end
+                    int(np.ceil(len(lenght)/6)))[:len(lenght)]
 
-        ax.vlines(lenght, 0, levels, color="tab:red", linestyles="dashed")  # The vertical stems.
-        ax.plot(lenght, np.zeros_like(lenght), "-o",
-                color="k", markerfacecolor="w")  # Baseline and markers on it.
+    ## Create figure and plot a stem plot with the date
+    fig, ax = plt.subplots(figsize=(8.8, 4), constrained_layout=True)
+    ax.set(title=f'''Zero bond valuation timeline\n Par:{par}, Maturity(Y): {maturity}, Discount rate: {discount_rate*100}%''')
 
-        ## Annotations 
-        names = ["Present value: \n" + f"{round(PV, 2)}"] + [""] * (len(lenght)-2) + ["Face value at maturity: \n" + f"{par}"]
+    ax.vlines(lenght, 0, levels, color="tab:red", linestyles="dashed")  # The vertical stems.
+    ax.plot(lenght, np.zeros_like(lenght), "-o",
+            color="k", markerfacecolor="w")  # Baseline and markers on it.
 
-        for n, l, r in zip(lenght, levels, names):
-            ax.annotate(r, xy=(n, l),
-                        xytext=(0, l*3), textcoords="offset points",
-                        horizontalalignment="center",
-                        verticalalignment="bottom" if l > 0 else "top")
+    ## Annotations 
+    names = ["Present value: \n" + f"{round(PV, 2)}"] + [""] * (len(lenght)-2) + ["Face value at maturity: \n" + f"{par}"]
 
-        ## remove y axis and spines and x_axis title
-        ax.yaxis.set_visible(False)
-        ax.spines[["left", "top", "right"]].set_visible(False)
-        ax.set_xlabel("Years", fontweight = 'bold')
-            
-        return PV, fig
+    for n, l, r in zip(lenght, levels, names):
+        ax.annotate(r, xy=(n, l),
+                    xytext=(0, l*3), textcoords="offset points",
+                    horizontalalignment="center",
+                    verticalalignment="bottom" if l > 0 else "top")
+
+    ## remove y axis and spines and x_axis title
+    ax.yaxis.set_visible(False)
+    ax.spines[["left", "top", "right"]].set_visible(False)
+    ax.set_xlabel("Years", fontweight = 'bold')
+    ax.set_xticks(lenght)
+    ax.set_xticklabels(lenght)
+        
+    return PV, fig
+
+def coupon_bond(par = 100, coupon_rate = 0.2, discount_rate = 0.13, maturity = 5, yearly = True) -> Any:
+    if yearly == True:          
+        periodic_coupon = par * coupon_rate
+        effective_rate = discount_rate
+        periods = maturity
+        # PV of face value
+        discount_mult = 1/((1+effective_rate)**periods)
+        PV_FV = par * discount_mult
+        #PV of coupons
+        # Splitting formula in 2 parts for debugging purposes
+        left_side = periodic_coupon / effective_rate
+        right_side = 1-(1/((1+effective_rate)**periods))
+        PV_coupons = left_side * right_side
+
+        compound = "Annual"
+        PV = PV_FV + PV_coupons
 
     else:
-        ## Two-part valuation using simple present values
+        # I'm only considering semi-annual as alternative, for lesser complexity
+        periodic_coupon = (par * coupon_rate)/2
+        effective_rate = discount_rate / 2
+        periods = maturity * 2
+        # PV of face value
+        discount_mult = 1/((1+effective_rate)**periods)
+        PV_FV = par * discount_mult
+        #PV of coupons
+        # Splitting formula in 2 parts for debugging purposes
+        left_side = periodic_coupon / effective_rate
+        right_side = 1-(1/((1+effective_rate)**periods))
+        PV_coupons = left_side * right_side
 
-        if yearly == True:          
-            periodic_coupon = par * coupon_rate
-            effective_rate = discount_rate
-            periods = maturity
-            # PV of face value
-            discount_mult = 1/((1+effective_rate)**periods)
-            PV_FV = par * discount_mult
-            #PV of coupons
-            # Splitting formula in 2 parts for debugging purposes
-            left_side = periodic_coupon / effective_rate
-            right_side = 1-(1/((1+effective_rate)**periods))
-            PV_coupons = left_side * right_side
+        compound = "Semi-Annual"
+        PV = PV_FV + PV_coupons
 
-            compound = "Annual"
-            PV = PV_FV + PV_coupons
+    # Timeline visualization based on matplotlibs timeline example
 
-        else:
-            # I'm only considering semi-annual as alternative, for lesser complexity
-            periodic_coupon = (par * coupon_rate)/2
-            effective_rate = discount_rate / 2
-            periods = maturity * 2
-            # PV of face value
-            discount_mult = 1/((1+effective_rate)**periods)
-            PV_FV = par * discount_mult
-            #PV of coupons
-            # Splitting formula in 2 parts for debugging purposes
-            left_side = periodic_coupon / effective_rate
-            right_side = 1-(1/((1+effective_rate)**periods))
-            PV_coupons = left_side * right_side
+    ## creating timeline spacing
+    lenght = list(range(0,periods + 1))
+    ## Choosing some nice levels
+    levels = np.tile([2] + [1] * (len(lenght)-2) + [3], # creating timeline
+                    int(np.ceil(len(lenght)/6)))[:len(lenght)]
 
-            compound = "Semi-Annual"
-            PV = PV_FV + PV_coupons
+    ## Create figure and plot a stem plot with the date
+    fig, ax = plt.subplots(figsize=(8.8, 4), constrained_layout=True)
+    ax.set(title=f'''Coupon bond valuation timeline\n Par:{par}, Maturity(Y): {maturity}, Coupon rate: {coupon_rate*100}%, 
+    Discount rate: {discount_rate*100}%, Compounding: {compound}''')
 
-        # Timeline visualization based on matplotlibs timeline example
+    ax.vlines(lenght, 0, levels, color="tab:red", linestyles="dashed")  # The vertical stems.
+    ax.plot(lenght, np.zeros_like(lenght), "-o",
+            color="k", markerfacecolor="w")  # Baseline and markers on it.
 
-        ## creating timeline spacing
-        lenght = list(range(0,periods + 1))
-        ## Choosing some nice levels
-        levels = np.tile([2] + [1] * (len(lenght)-2) + [3], # creating timeline
-                        int(np.ceil(len(lenght)/6)))[:len(lenght)]
+    ## Annotations 
+    names = [f"Present value: \n {round(PV,2)}"] + [f"Coupon: \n{periodic_coupon}"] * (len(lenght)-2) + [f"Face value + coupon: \n {par + periodic_coupon}"]
 
-        ## Create figure and plot a stem plot with the date
-        fig, ax = plt.subplots(figsize=(8.8, 4), constrained_layout=True)
-        ax.set(title=f'''Coupon bond valuation timeline\n Par:{par}, Maturity(Y): {maturity}, Coupon rate: {coupon_rate*100}%, 
-        Discount rate: {discount_rate*100}%, Compounding: {compound}''')
+    for n, l, r in zip(lenght, levels, names):
+        ax.annotate(r, xy=(n, l),
+                    xytext=(0, l*3), textcoords="offset points",
+                    horizontalalignment="center",
+                    verticalalignment="bottom" if l > 0 else "top")
 
-        ax.vlines(lenght, 0, levels, color="tab:red", linestyles="dashed")  # The vertical stems.
-        ax.plot(lenght, np.zeros_like(lenght), "-o",
-                color="k", markerfacecolor="w")  # Baseline and markers on it.
+    ## remove y axis and spines and x_axis title
+    ax.yaxis.set_visible(False)
+    ax.spines[["left", "top", "right"]].set_visible(False)
+    ax.set_xlabel("Periods", fontweight = 'bold')
+    ax.set_xticks(lenght)
+    ax.set_xticklabels(lenght)
 
-        ## Annotations 
-        names = [f"Present value: \n {round(PV,2)}"] + [f"Coupon: \n{periodic_coupon}"] * (len(lenght)-2) + [f"Face value + coupon: \n {par + periodic_coupon}"]
+    return PV, fig
 
-        for n, l, r in zip(lenght, levels, names):
-            ax.annotate(r, xy=(n, l),
-                        xytext=(0, l*3), textcoords="offset points",
-                        horizontalalignment="center",
-                        verticalalignment="bottom" if l > 0 else "top")
-
-        ## remove y axis and spines and x_axis title
-        ax.yaxis.set_visible(False)
-        ax.spines[["left", "top", "right"]].set_visible(False)
-        ax.set_xlabel("Periods", fontweight = 'bold')
-        ax.set_xticks(lenght)
-        ax.set_xticklabels(lenght)
-
-        return PV, fig
-
-def stock(tick):
-    pass
+@st.cache()
+def stock(tick) -> pd.DataFrame:
+    data = yf.Ticker(tick) # Generel ticker info
+    ticker_data = data.history(period="5y", interval="1mo", rounding=True) # obtaining 5 year data for any requested ticker
+    ticker_data.dropna(inplace = True) #deleting random empty spots
+    return ticker_data
 
 class portfolio():
-    pass
+    def __init__(self, name = "Default_Portfolio", ticks = {}) -> None:
+        self.name = name
+        self.tickers = ticks
+        self.portfolio = None
+
+    def add_ticker(tick, data, weight = 0):
+        # Function to simply add ticker to the internal list
+        self.tickers[tick] = [data, weight]
+
+    def remove_ticker(tick):
+        self.tickers.popitem(tick)
 
 
+    
+
+'''
 def portfolio(ticker_list = ["MSFT", "WM", "AAPL"]):
     data = None
 
@@ -142,9 +159,4 @@ def portfolio(ticker_list = ["MSFT", "WM", "AAPL"]):
     returns = data.pct_change()
     # returns.mean(axis=0) returns per stock
     # returns.std(axis=0) monthly volatility
-
-    
-
-
-
-    
+'''    
