@@ -4,25 +4,24 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
-import streamlit as st
-from pulp import LpMinimize, LpProblem, LpVariable, LpStatus
+#from pulp import LpMinimize, LpProblem, LpVariable, LpStatus
 
 
-def zero_bond(par = 100, discount_rate = 0.13, maturity = 5):
+def zero_bond(par, discount_rate, maturity) -> Any:
     discount_mult = 1/((1+discount_rate)**maturity)
     PV = par * discount_mult
 
     # Timeline visualization based on matplotlibs timeline example
 
     ## creating timeline spacing
-    lenght = list(range(0,maturity + 1))
+    lenght = list(range(0,int(maturity) + 1))
     ## Choosing some nice levels
     levels = np.tile([1] + [0] * (len(lenght)-2) + [2], # creating zero timeline by highlighting start and end
                     int(np.ceil(len(lenght)/6)))[:len(lenght)]
 
     ## Create figure and plot a stem plot with the date
     fig, ax = plt.subplots(figsize=(8.8, 4), constrained_layout=True)
-    ax.set(title=f'''Zero bond valuation timeline\n Par:{par}, Maturity(Y): {maturity}, Discount rate: {discount_rate*100}%''')
+    ax.set(title=f'''Zero bond valuation timeline\n Par: {par}, Maturity(Y): {maturity}, Discount rate: {discount_rate*100:.2f}%''')
 
     ax.vlines(lenght, 0, levels, color="tab:red", linestyles="dashed")  # The vertical stems.
     ax.plot(lenght, np.zeros_like(lenght), "-o",
@@ -46,7 +45,7 @@ def zero_bond(par = 100, discount_rate = 0.13, maturity = 5):
         
     return PV, fig
 
-def coupon_bond(par = 100, coupon_rate = 0.2, discount_rate = 0.13, maturity = 5, yearly = True) -> Any:
+def coupon_bond(par, coupon_rate, discount_rate, maturity, yearly) -> Any:
     if yearly == True:          
         periodic_coupon = par * coupon_rate
         effective_rate = discount_rate
@@ -83,15 +82,15 @@ def coupon_bond(par = 100, coupon_rate = 0.2, discount_rate = 0.13, maturity = 5
     # Timeline visualization based on matplotlibs timeline example
 
     ## creating timeline spacing
-    lenght = list(range(0,periods + 1))
+    lenght = list(range(0,int(periods) + 1))
     ## Choosing some nice levels
     levels = np.tile([2] + [1] * (len(lenght)-2) + [3], # creating timeline
                     int(np.ceil(len(lenght)/6)))[:len(lenght)]
 
     ## Create figure and plot a stem plot with the date
     fig, ax = plt.subplots(figsize=(8.8, 4), constrained_layout=True)
-    ax.set(title=f'''Coupon bond valuation timeline\n Par:{par}, Maturity(Y): {maturity}, Coupon rate: {coupon_rate*100}%, 
-    Discount rate: {discount_rate*100}%, Compounding: {compound}''')
+    ax.set(title=f'''Coupon bond valuation timeline\n Par:{par}, Maturity(Y): {maturity}, Coupon rate: {coupon_rate*100:.2f}%, 
+    Discount rate: {discount_rate*100:.2f}%, Compounding: {compound}''')
 
     ax.vlines(lenght, 0, levels, color="tab:red", linestyles="dashed")  # The vertical stems.
     ax.plot(lenght, np.zeros_like(lenght), "-o",
@@ -130,7 +129,7 @@ class portfolio():
         self.origin_portfolio = None
         self.origin_weights = {}
         self.weighted_portfolio = None
-        self.new_weights = {}
+        self.weights = {}
 
     def repr(self) -> pd.DataFrame:
         # return visual representation of the current portfolio
@@ -148,7 +147,7 @@ class portfolio():
         for ticker in self.origin_portfolio.columns:
             self.origin_weights[ticker] = equal_weight
 
-    def origin_stocks_returns(self):
+    def origin_stocks_returns(self) -> pd.Series:
         # Display the average monthly return for each stock for the period
         return self.origin_portfolio.pct_change().mean(axis=0)
 
@@ -157,5 +156,29 @@ class portfolio():
         return self.origin_portfolio.pct_change().std(axis=0)
 
     def portfolio_return(self):
-        # calculate expected portfolio return for the baseline case of equal weights
+        # calculate expected monthly portfolio return for the baseline case of equal weights
+        monthly_returns = self.origin_portfolio.pct_change().mean(axis=0)
+        monthly_returns = monthly_returns.values
+        weight_vector = pd.Series(self.origin_weights.values())
+        return (monthly_returns * weight_vector).sum()
+    
+    def portfolio_volatility(self):
+        # calculate expected monthly portfolio volatility for the baseline case of equal weights
+        monthly_vol = self.origin_portfolio.pct_change().std(axis=0)
+        monthly_vol = monthly_vol.values
+        weight_vector = pd.Series(self.origin_weights.values())
+        return (monthly_vol * weight_vector).sum() 
+    
+    def new_weights(self):
         pass
+
+    def re_weight_portfolio(self):
+        self.weighted_portfolio = self.origin_portfolio * self.new_weights.values()
+
+    def weighted_portfolio_return(self):
+        monthly_return = self.weighted_portfolio.pct_change().mean(axis=0)
+        return monthly_return
+
+    def weighted_portfolio_volatility(self):
+        monthly_vol = self.weighted_portfolio.pct_change().std(axis=0)
+        return monthly_vol
