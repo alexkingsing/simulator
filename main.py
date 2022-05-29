@@ -1,5 +1,6 @@
 # THIS IS THE MAIN FILE
 
+from matplotlib import ticker
 import streamlit as st
 import simulators
 
@@ -13,7 +14,7 @@ with st.sidebar:
 if option == "":
     st.write("Cool")
 
-elif option == "Bonds":
+elif option == "Bonds":  ### PENDING DESCRIPTION FOR BOTH BOND TYPES
     col1, col2 = st.columns([2,1])
 
     with col1: # bonds description
@@ -32,8 +33,10 @@ elif option == "Bonds":
         with zcol3:
             time_to_maturity = st.number_input("Input the maturity of the bond (years from now", min_value=1, value=5)
 
-        value, plot = simulators.zero_bond(par=face_value, discount_rate=rate, maturity = time_to_maturity)
-        st.pyplot(plot)
+        display = st.button("Plot and value!")
+        if display == True:
+            value, plot = simulators.zero_bond(par=face_value, discount_rate=rate, maturity = time_to_maturity)
+            st.pyplot(plot)
 
     else:
         st.write("SOME INTRO TEXT TO A COUPON BOND")
@@ -49,11 +52,31 @@ elif option == "Bonds":
         with ccol5:
             frequency = st.checkbox("Yearly payments frequency?", value=True)
 
-        value, plot = simulators.coupon_bond(par=face_value, discount_rate=rate, 
-        maturity=time_to_maturity, coupon_rate=coupon, yearly=frequency)
-        st.pyplot(plot)
+
+        display = st.button("Plot and value!")
+        if display == True:
+            value, plot = simulators.coupon_bond(par=face_value, discount_rate=rate, 
+            maturity=time_to_maturity, coupon_rate=coupon, yearly=frequency)
+            st.pyplot(plot)
 
 elif option == "Stocks & Portfolio":
+
+    tickers = st.text_area("Input the tickers you'd like to review (max 10) separated by coma", value="")
+    tickers = tickers.replace(" ","")
+    st.caption("Tickers that cannot be retrieved will be omitted to not interrupt runtime. A warning will be displayed."    )
+    tickers_list = tickers.split(sep=",")
+
+    st.write(tickers, tickers_list)
+
+    # creating stocks list through list comprehension
+    stocks_data = [simulators.stock(ticker) for ticker in tickers_list]
+
+    st.write(len(stocks_data))
+    st.write(stocks_data[0])
+
+    
+
+    '''
     stock1= simulators.stock("MSFT")
     stock2= simulators.stock("AAPL")
     stock3= simulators.stock("WM")
@@ -64,8 +87,7 @@ elif option == "Stocks & Portfolio":
     portfolio.create_portfolio()
 
     st.write(portfolio.portfolio_volatility())
+    '''
 
 else:
     pass
-
-
